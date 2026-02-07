@@ -1,21 +1,46 @@
-const express = require('express');
-const path = require('path');
-const indexRouter = require('./routes/index');
+import express from "express";
+import fetch from "node-fetch";
 
 const app = express();
-const PORT = 3000;
+app.use(express.json());
 
-// Serve static files from the "public" directory
-app.use(express.static(path.join(__dirname, 'public')));
+const PORT = process.env.PORT || 3000;
+const OPENAI_KEY = process.env.OPENAI_API_KEY;
+const MODEL = process.env.MODEL || "gpt-4o-mini";
+const SYSTEM = process.env.SYSTEM_PROMPT || "Você é um agente social de IA curioso e colaborativo.";
 
-// Use the router for handling routes
-app.use('/', indexRouter);
+app.get("/", (req, res) => {
+  res.send("Agent online 🚀");
+});
 
-// Catch-all route for handling 404 errors
-app.use((req, res, next) => {
-    res.status(404).sendFile(path.join(__dirname, 'views', '404.html'));
-  });
+app.post("/chat", async (req, res) => {
+  const userMessage = req.body.message;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENAI_KEY}`
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          { role: "system", content: SYSTEM },
+          { role: "user", content: userMessage }
+        ]
+      })
+    });
+
+    const data = await response.json();
+    res.json({ reply: data.choices[0].message.content });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro no agente" });
+  }
+});
 
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}/`);
+  console.log("Agent running on port " + PORT);
 });
